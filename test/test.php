@@ -1,7 +1,9 @@
-<?
-	include('../lib/emoji.php');
+<?php
+	include(dirname(__FILE__).'/../lib/emoji.php');
 
 	header('Content-type: text/plain; charset=UTF-8');
+
+	$GLOBALS['failures'] = 0;
 
 
 	#
@@ -23,7 +25,7 @@
 	$test_kddi	= "Hello ".utf8_bytes(0xE490);
 	$test_google	= "Hello ".utf8_bytes(0xFE02C);
 
-	$test_html	= "Hello <span class=\"emoji-outer emoji-sizer\"><span class=\"emoji-inner emoji2649\"></span></span>";
+	$test_html	= "Hello ".test_html(2649);
 
 	is(emoji_docomo_to_unified($test_docomo),	$test_unified, "DoCoMo -> Unified");
 	is(emoji_kddi_to_unified($test_kddi),		$test_unified, "KDDI -> Unified");
@@ -78,7 +80,7 @@
 	is(emoji_html_to_unified($test_html),		$test_unified,	"HTML -> Unified");
 
 	echo "#------------------\n";
-	
+
 
 	#
 	# names are accessed by the unified codepoint (which makes it tricky for 2-codepoint unicode symbols)
@@ -90,6 +92,37 @@
 	is(emoji_get_name(utf8_bytes(0x1F450)),	'OPEN HANDS SIGN',		"name U+1F450");
 	is(emoji_get_name(utf8_bytes(0x1F52B)),	'PISTOL',			"name U+1F52B");
 	is(emoji_get_name(utf8_bytes(0x36).utf8_bytes(0x20E3)),	'KEYCAP 6',	"name U+36 U+20E3");
+
+	echo "#------------------\n";
+
+
+	#
+	# finding emoji works correctly
+	#
+
+	is(emoji_contains_emoji('test '.utf8_bytes(0x2600).' test'),			true, "contains simple emoji");
+	is(emoji_contains_emoji('test '.utf8_bytes(0x36).utf8_bytes(0x20E3).' test'),	true, "contains compound emoji");
+	is(emoji_contains_emoji('hello world'),						false, "does not contain emoji");
+
+
+	echo "#------------------\n";
+
+
+	#
+	# deal with modifiers correctly
+	#
+
+	is(emoji_unified_to_html("\xE2\x9D\xA4"),		test_html('2764'),		"no modifier");
+	is(emoji_unified_to_html("\xE2\x9D\xA4\xEF\xB8\x8F"),	test_html('2764'),		"image modifier");
+	is(emoji_unified_to_html("\xE2\x9D\xA4\xEF\xB8\x8E"),	"\xE2\x9D\xA4\xEF\xB8\x8E",	"text modifier");
+
+
+
+	#
+	# exit badly if we didn't pass
+	#
+
+	exit($GLOBALS['failures'] ? 1 : 0);
 
 
 	#
@@ -106,6 +139,8 @@
 			echo "not ok # $name\n";
 			echo "# expected : ".byteify($expected)."\n";
 			echo "# got      : ".byteify($got)."\n";
+
+			$GLOBALS['failures']++;
 		}
 	}
 
@@ -144,4 +179,7 @@
 			return chr($cp);
 		}
 	}
-?>
+
+	function test_html($codepoint){
+		return "<span class=\"emoji-outer emoji-sizer\"><span class=\"emoji-inner emoji{$codepoint}\"></span></span>";
+	}
